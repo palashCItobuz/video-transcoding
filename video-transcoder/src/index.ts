@@ -98,7 +98,7 @@ async function downloadVideo(key: string, outputPath: string) {
       Key: key
     });
 
-    const response = await s3.send(command); console.log("response", response); 
+    const response = await s3.send(command);
     const bodyStream = response.Body as Readable;
     await new Promise<void>((resolve, reject) => {
       const writeStream = fs.createWriteStream(outputPath);
