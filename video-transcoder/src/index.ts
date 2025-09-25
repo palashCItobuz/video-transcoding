@@ -1,5 +1,5 @@
 import { SQSClient, ReceiveMessageCommand } from '@aws-sdk/client-sqs';
-import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import type { S3Event } from 'aws-lambda';
 import fs from "fs";
 import fetch from "node-fetch";
@@ -43,8 +43,32 @@ const pollMessages = async (command: ReceiveMessageCommand) => {
     if("Service" in event && "Event" in event) {
       if(event.Event === "s3:TestEvent") continue;
     }
-    handleMessage(message)
+    // handleMessage(message)
+    await handleEvent(event);
   }
+};
+
+async function handleEvent(event: S3Event) {
+  for (const record of event.Records) {
+    const { s3 } = record;
+    const { bucket, object: { key } } = s3;
+    
+  }
+};
+
+async function handleMessage(message: any) {
+  const body = JSON.parse(message.Body);
+  const key = decodeURIComponent(body.Records[0].s3.object.key.replace(/\+/g, " "));
+ 
+  const outputFile = `/tmp/output-${Date.now()}.mp4`;
+
+  console.log(`Downloading s3://${AWS_BUCKET_NAME}/${key}`);
+  await downloadVideo(key, outputFile);
+
+  console.log("Transcoding...");
+  //await transcodeVideo(inputFile, outputFile);
+
+  console.log("✅ Done");
 };
 
 async function downloadVideo(key: string, outputPath: string) {
@@ -67,7 +91,7 @@ async function downloadVideo(key: string, outputPath: string) {
   }); */
 
   try {
-    console.log("tmp exists?", fs.existsSync("/tmp"));
+    console.log("tmp exists?", fs.existsSync("/container/tmp"));
     const obj = await s3.send(new HeadObjectCommand({ Bucket: AWS_BUCKET_NAME, Key: key }));
     const command = new GetObjectCommand({
       Bucket: AWS_BUCKET_NAME,
@@ -89,21 +113,6 @@ async function downloadVideo(key: string, outputPath: string) {
     console.error(`❌ File does not exist or permission denied for ${key}`, err.name, err.message);
     return;
   }
-}
-
-async function handleMessage(message: any) {
-  const body = JSON.parse(message.Body);
-  const key = decodeURIComponent(body.Records[0].s3.object.key.replace(/\+/g, " "));
- 
-  const outputFile = `/tmp/output-${Date.now()}.mp4`;
-
-  console.log(`Downloading s3://${AWS_BUCKET_NAME}/${key}`);
-  await downloadVideo(key, outputFile);
-
-  console.log("Transcoding...");
-  //await transcodeVideo(inputFile, outputFile);
-
-  console.log("✅ Done");
-}
+};
 
 init();
