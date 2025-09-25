@@ -11,7 +11,7 @@ const key = "uploads/1758779722327-v_6cf31daa-7eb0-4a9b-aa07-78be28c59d37.mp4";
 
 const resolutions = [
   { name: "360p", width: 480, height: 360 },
-  { name: "360p", width: 858, height: 480 },
+  { name: "480p", width: 858, height: 480 },
   { name: "720p", width: 1280, height: 720 }
 ];
 
@@ -30,11 +30,13 @@ async function init() {
       await fsp.writeFile(originalPath, response.Body);
       
       resolutions.forEach(resolution => {
-        const outputPath = `videos/${resolution.name}-video.mp4 `;
+        const outputPath = `videos/${resolution.name}-video.mp4`;
         ffmpeg(originalPath)
-          .size(`${resolution.width}x${resolution.height}`)
-          .outputOptions('-c:a copy')
-          .on('end', () => {
+          .output(outputPath)
+          .withVideoCodec('libx264')
+          .withAudioCodec('aac')
+          .withSize(`${resolution.width}x${resolution.height}`)
+          .on('end', async () => {
             console.log(`Transcoding to ${resolution.name} completed`);
           })
           .on('error', (err) => {
