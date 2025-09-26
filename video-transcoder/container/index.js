@@ -3,12 +3,16 @@ const ffmpeg = require("fluent-ffmpeg");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
+const stream = require("node:stream");
+const { promisify } = require("node:util");
+
 
 const AWS_REGION = "ap-south-1";
-const AWS_BUCKET_NAME = "sehncoded";
 const AWS_TRANSCODED_BUCKET_NAME = "sehncoded-transcoded-files";
 const s3Client = new S3Client({ region: AWS_REGION });
-const key = "uploads/1758779722327-v_6cf31daa-7eb0-4a9b-aa07-78be28c59d37.mp4";
+const AWS_BUCKET_NAME = process.env.AWS_BUCKET_NAME;
+const key = process.env.KEY;
+const pipeline = promisify(stream.pipeline);
 
 const RESOLUTIONS = [
   { name: "360p", width: 480, height: 360 },
@@ -27,23 +31,9 @@ async function init() {
     const match = key.match(/(?<=uploads\/).*?(?=\.mp4)/);
     const response = await s3Client.send(command);
     const originalPath = `tmp/${match[0]}-video.mp4`;
-    await fsp.writeFile(originalPath, response.Body);
+    await pipeline(response.Body, fs.createWriteStream(originalPath));
+    //await fsp.writeFile(originalPath, response.Body);
     
-    /* RESOLUTIONS.forEach(resolution => {
-      const outputPath = `videos/${match[0]}-${resolution.name}-video.mp4`;
-      ffmpeg(originalPath)
-        .output(outputPath)
-        .withVideoCodec('libx264')
-        .withAudioCodec('aac')
-        .withSize(`${resolution.width}x${resolution.height}`)
-        .on('end', async () => {
-          console.log(`Transcoding to ${resolution.name} completed`);
-        })
-        .on('error', (err) => {
-          console.error(`Error transcoding to ${resolution.name}:`, err);
-        })
-        .save(outputPath);
-    }); */
     const promises = RESOLUTIONS.map(resolution => {
       const outputPath = `videos/${match[0]}-${resolution.name}-video.mp4`;
       return new Promise((resolve, reject) => {
@@ -72,9 +62,9 @@ async function init() {
       });
     });
     
-    const videoFiles = await Promise.all(promises);
+    await Promise.all(promises);
     console.log("All transcodings completed");
-    //await fs.writeFile(path.join('/tmp', 'original-video.mp4'), response.Body);
+    process.exit(0);
   } catch (err) {
     console.error("Error checking object:", err);
   }
@@ -82,4 +72,6 @@ async function init() {
 
 init().catch((error) => {
   console.error("Error initializing S3 Client:", error);
+}).finally(() => {
+  process.exit(0);
 });
