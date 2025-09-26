@@ -1,0 +1,9 @@
+videos/*
+tmp/*
+*.log
+*.tmp
+*.cache
+*.env
+node_modules/
+dist/
+.DS_Store
